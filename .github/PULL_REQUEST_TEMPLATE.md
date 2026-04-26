@@ -13,7 +13,7 @@
 
 ## 📌 What & Why
 
-<!-- 
+<!--
 Briefly explain:
 - What was changed
 - Why this change was necessary
@@ -24,7 +24,7 @@ Briefly explain:
 
 ## 🛠 How it was done
 
-<!-- 
+<!--
 Describe the general approach or solution applied.
 Optional but useful for complex implementations.
 -->
@@ -33,7 +33,7 @@ Optional but useful for complex implementations.
 
 ## 🧪 How to Test
 
-<!-- 
+<!--
 List manual testing steps, commands, or how to validate the fix.
 If not applicable (e.g., for docs or small refactors), say so.
 -->
@@ -42,7 +42,7 @@ If not applicable (e.g., for docs or small refactors), say so.
 
 ## 🐞 Bugfix Context (if applicable)
 
-<!-- 
+<!--
 If this is a bugfix:
 - What was broken
 - How it manifested
