@@ -1,0 +1,90 @@
+name: PR CI (Fast)
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-ci-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  PYTHON_VERSION: "3.10"
+  UV_VERSION: "0.11.7"
+
+jobs:
+  pr_title_conventional:
+    name: pr_title_conventional
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR title
+        id: semantic
+        uses: amannn/action-semantic-pull-request@v5
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            chore
+            docs
+            refactor
+            test
+            ci
+            build
+            perf
+            style
+            revert
+          requireScope: false
+
+      - name: Explain expected title format
+        if: steps.semantic.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::error title=Invalid PR title::Use Conventional Commits."
+          echo "Expected: <type>: <subject> or <type>(<scope>): <subject>"
+          echo "Allowed types: feat | fix | chore | docs | refactor | test | ci | build | perf | style | revert"
+          exit 1
+
+  fast_quality:
+    name: fast_quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache uv and pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/pre-commit
+            ~/.cache/uv
+          key: ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-fast-${{ hashFiles('uv.lock', '.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-fast-
+
+      - name: Sync dependencies
+        run: uv sync --locked
+
+      # Pre-commit is the fastest full-repository signal while the domain layer is still pending.
+      - name: Run pre-commit
+        run: uv run pre-commit run --all-files

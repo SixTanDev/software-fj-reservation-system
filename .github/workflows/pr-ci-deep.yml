@@ -1,0 +1,99 @@
+name: PR CI (Deep)
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-ci-deep-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.10"
+  UV_VERSION: "0.11.7"
+
+jobs:
+  commit_messages_conventional:
+    name: commit_messages_conventional
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          if [[ -z "$BASE_SHA" || -z "$HEAD_SHA" ]]; then
+            echo "::error title=Missing commit range::The pull request commit range is not available."
+            exit 1
+          fi
+
+          mapfile -t COMMITS < <(git rev-list --no-merges "${BASE_SHA}..${HEAD_SHA}")
+          if [[ "${#COMMITS[@]}" -eq 0 ]]; then
+            echo "No pull request commits to validate."
+            exit 0
+          fi
+
+          REGEX='^(feat|fix|chore|docs|refactor|test|ci|build|perf|style|revert)(\([A-Za-z0-9._/-]+\))?(!)?: .+'
+          FAILED=0
+
+          for SHA in "${COMMITS[@]}"; do
+            SUBJECT="$(git log --format=%s -n 1 "$SHA")"
+            if [[ ! "$SUBJECT" =~ $REGEX ]]; then
+              echo "::error title=Invalid commit message::${SHA}: '$SUBJECT'"
+              FAILED=1
+            fi
+          done
+
+          if [[ "$FAILED" -ne 0 ]]; then
+            echo "Expected: <type>: <subject> or <type>(<scope>): <subject>"
+            echo "Allowed types: feat | fix | chore | docs | refactor | test | ci | build | perf | style | revert"
+            exit 1
+          fi
+
+  deep_quality:
+    name: deep_quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Cache uv environment
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/uv
+          key: ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-deep-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-deep-
+
+      - name: Sync dependencies
+        run: uv sync --locked
+
+      - name: Run pytest
+        run: uv run pytest
+
+      - name: Run pylint
+        run: uv run pylint src tests
