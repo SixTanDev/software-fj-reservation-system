@@ -1,0 +1,54 @@
+minimum_pre_commit_version: "3.7.0"
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+fail_fast: true
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=512]
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.3.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --strict
+          - feat
+          - fix
+          - chore
+          - docs
+          - refactor
+          - test
+          - ci
+          - build
+          - perf
+          - style
+          - revert
+
+  - repo: local
+    hooks:
+      # Keep linting behind uv so local hooks and CI evaluate the same environment.
+      - id: pylint-baseline
+        name: pylint-baseline
+        entry: uv run pylint src tests
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # Pytest stays on pre-push to keep ordinary commits fast while the repo is still a scaffold.
+      - id: pytest-baseline
+        name: pytest-baseline
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
