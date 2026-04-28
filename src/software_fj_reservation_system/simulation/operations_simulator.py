@@ -11,30 +11,19 @@ Full implementation will be carried out during the development phase.
 """
 
 def execute_simulation():
-"""
+    """Executes the general system simulation.
 
-Executes the general system simulation.
+    Pending:
 
-Pending:
-
-- Register valid customers.
-
-- Register invalid customers.
-
-- Create valid services.
-
-- Create invalid services.
-
-- Create successful reservations.
-
-- Create failed reservations.
-
-- Confirm reservations.
-
-- Cancel reservations.
-
-- Log errors.
-
-- Verify that the system continues to function.
-"""
-print("Simulation pending implementation.")
+    - Register valid customers.
+    - Register invalid customers.
+    - Create valid services.
+    - Create invalid services.
+    - Create valid reservations.
+    - Create invalid reservations.
+    - Manage existing reservations.
+    - Manage invalid reservations.
+    - Simulate repository access.
+    - Simulate exception handling.
+    """
+    pass
