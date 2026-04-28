@@ -1,7 +1,7 @@
-"""
-Use case: Registering a client.
+"""Use case: Register a client.
 
-This module will coordinate client registration in the system. It will validate the received data, create the client, and save it in the corresponding repository.
+This module will coordinate the registration of customers
+and keep the application layer ready for future validation logic.
 
-Full implementation will be carried out during the development phase.
+Full implementation will take place during the development phase.
 """
