@@ -1,14 +1,19 @@
-"""
-Domain package.
-This package contains the main business entities of the system:
-Client, Service, and Reservation.
-"""
+"""Domain package exports."""
 
-# Esto es lo que debes agregar debajo de las comillas:
-from .entity import EntidadBase
-from .service import Servicio
-from .client import Cliente
-from .room_service import ReservaSala
-from .equipment_service import AlquilerEquipo
-from .consulting_service import AsesoriaEspecializada
-from .reservation import Reserva
+from software_fj_reservation_system.domain.client import Client
+from software_fj_reservation_system.domain.consulting_service import ConsultingService
+from software_fj_reservation_system.domain.entity import Entity
+from software_fj_reservation_system.domain.equipment_service import EquipmentService
+from software_fj_reservation_system.domain.reservation import Reservation
+from software_fj_reservation_system.domain.room_service import RoomService
+from software_fj_reservation_system.domain.service import Service
+
+__all__ = [
+    "Client",
+    "ConsultingService",
+    "Entity",
+    "EquipmentService",
+    "Reservation",
+    "RoomService",
+    "Service",
+]

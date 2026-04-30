@@ -1,19 +1,44 @@
-class Cliente:
-    def __init__(self, cedula, nombre, correo):
-        self._cedula = cedula # Atributo protegido
-        self.nombre = nombre
-        self.correo = correo # Esto activará el setter de abajo
+"""Client domain model."""
 
-    @property
-    def correo(self):
-        return self._correo_electronico
+from dataclasses import dataclass, field
 
-    @correo.setter
-    def correo(self, valor):
-        # Validación estricta requerida
-        if "@" not in valor or "." not in valor:
-            raise ValueError("El formato del correo es inválido")
-        self._correo_electronico = valor
+from software_fj_reservation_system.domain.entity import Entity
 
-    def __str__(self):
-        return f"Cliente: {self.nombre} | ID: {self._cedula}"
+
+@dataclass
+class Client(Entity):
+    """Represent a system client."""
+
+    name: str
+    email: str
+    phone: str
+    active: bool = field(default=True)
+
+    def __post_init__(self) -> None:
+        """Validate client data after initialization."""
+        self._validate_name()
+        self._validate_email()
+        self._validate_phone()
+
+    def _validate_name(self) -> None:
+        """Validate the client name."""
+        if not self.name or not self.name.strip():
+            raise ValueError("Client name cannot be empty.")
+
+    def _validate_email(self) -> None:
+        """Validate the client email."""
+        if not self.email or "@" not in self.email:
+            raise ValueError("Client email must be valid.")
+
+    def _validate_phone(self) -> None:
+        """Validate the client phone."""
+        if not self.phone or not self.phone.strip():
+            raise ValueError("Client phone cannot be empty.")
+
+    def deactivate(self) -> None:
+        """Deactivate the client."""
+        self.active = False
+
+    def activate(self) -> None:
+        """Activate the client."""
+        self.active = True

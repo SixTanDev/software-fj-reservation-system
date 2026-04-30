@@ -1,16 +1,30 @@
-from .service import Servicio
+"""Consulting service domain model."""
 
-class AsesoriaEspecializada(Servicio):
-    def __init__(self, id_servicio, nombre, precio_sesion, experto):
-        super().__init__(id_servicio, nombre, precio_sesion)
-        self.experto = experto
+from dataclasses import dataclass
 
-    # Sobrecarga con parámetros opcionales para impuestos o descuentos
-    def calcular_costo(self, sesiones, impuesto=0.19, es_vip=False):
-        subtotal = self._precio_base * sesiones
-        if es_vip:
-            subtotal *= 0.90  # 10% de descuento
-        return subtotal + (subtotal * impuesto)
+from software_fj_reservation_system.domain.service import Service
 
-    def obtener_detalle(self):
-        return f"Asesoría con: {self.experto} (Especialidad: {self.nombre})"
+
+@dataclass
+class ConsultingService(Service):
+    """Represent a specialized consulting service."""
+
+    consultant_name: str = "Assigned consultant"
+
+    def __post_init__(self) -> None:
+        """Validate consulting service data after initialization."""
+        super().__post_init__()
+        if not self.consultant_name or not self.consultant_name.strip():
+            raise ValueError("Consultant name cannot be empty.")
+
+    def calculate_cost(self, duration: int) -> float:
+        """Calculate consulting service cost."""
+        if duration <= 0:
+            raise ValueError("Duration must be greater than zero.")
+
+        consulting_fee = 1.2
+        return self.base_price * duration * consulting_fee
+
+    def describe(self) -> str:
+        """Return a consulting service description."""
+        return f"{self.name} consulting service with {self.consultant_name}."

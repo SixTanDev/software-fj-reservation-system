@@ -1,13 +1,29 @@
-from .service import Servicio
+"""Room service domain model."""
 
-class ReservaSala(Servicio):
-    def __init__(self, id_servicio, nombre, precio_base, capacidad):
-        super().__init__(id_servicio, nombre, precio_base)
-        self.capacidad = capacidad
+from dataclasses import dataclass
 
-    def calcular_costo(self, horas):
-        # Polimorfismo: cálculo basado en horas
-        return self._precio_base * horas
+from software_fj_reservation_system.domain.service import Service
 
-    def obtener_detalle(self):
-        return f"Sala: {self.nombre} (Capacidad: {self.capacidad} personas)"
+
+@dataclass
+class RoomService(Service):
+    """Represent a room reservation service."""
+
+    capacity: int = 1
+
+    def __post_init__(self) -> None:
+        """Validate room service data after initialization."""
+        super().__post_init__()
+        if self.capacity <= 0:
+            raise ValueError("Room capacity must be greater than zero.")
+
+    def calculate_cost(self, duration: int) -> float:
+        """Calculate room service cost."""
+        if duration <= 0:
+            raise ValueError("Duration must be greater than zero.")
+
+        return self.base_price * duration
+
+    def describe(self) -> str:
+        """Return a room service description."""
+        return f"{self.name} room service for {self.capacity} people."

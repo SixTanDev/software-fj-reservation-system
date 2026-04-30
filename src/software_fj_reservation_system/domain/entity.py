@@ -1,11 +1,16 @@
-from abc import ABC, abstractmethod
-from datetime import datetime
+"""Base entity module."""
 
-class EntidadBase(ABC):
-    def __init__(self, id_entidad):
-        self._id_entidad = id_entidad
-        self._fecha_creacion = datetime.now()
+from dataclasses import dataclass
+from uuid import uuid4
 
-    @property
-    def id_entidad(self):
-        return self._id_entidad
+
+@dataclass
+class Entity:
+    """Base entity for domain objects."""
+
+    id: str
+
+    @classmethod
+    def create_id(cls) -> str:
+        """Create a unique entity identifier."""
+        return str(uuid4())
