@@ -8,6 +8,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from software_fj_reservation_system.domain.entity import Entity
+from software_fj_reservation_system.exceptions import (
+    InconsistentCalculationError,
+    InvalidDataError,
+)
 
 
 @dataclass
@@ -31,8 +35,11 @@ class Service(Entity, ABC):
 
         Every service must have a valid name and a valid base price.
         """
-        self._validate_name()
-        self._validate_base_price()
+        try:
+            self._validate_name()
+            self._validate_base_price()
+        except ValueError as error:
+            raise InvalidDataError(str(error)) from error
 
     def _validate_name(self) -> None:
         """Validate the service name.
@@ -52,7 +59,12 @@ class Service(Entity, ABC):
             raise ValueError("Service base price must be greater than zero.")
 
     @abstractmethod
-    def calculate_cost(self, duration: int) -> float:
+    def calculate_cost(
+        self,
+        duration: int,
+        tax_rate: float = 0.0,
+        discount_rate: float = 0.0,
+    ) -> float:
         """Calculate the service cost.
 
         This method is abstract because each type of service calculates
@@ -81,3 +93,37 @@ class Service(Entity, ABC):
         This allows the service to be used again.
         """
         self.available = True
+
+    def _calculate_total_cost(
+        self,
+        duration: int,
+        multiplier: float = 1.0,
+        tax_rate: float = 0.0,
+        discount_rate: float = 0.0,
+    ) -> float:
+        """Calculate the total cost with optional taxes and discounts.
+
+        Subclasses delegate to this helper so every service validates pricing
+        modifiers in a consistent way.
+        """
+        try:
+            if duration <= 0:
+                raise ValueError("Duration must be greater than zero.")
+            if tax_rate < 0:
+                raise ValueError("Tax rate cannot be negative.")
+            if discount_rate < 0:
+                raise ValueError("Discount rate cannot be negative.")
+            if multiplier <= 0:
+                raise ValueError("Service multiplier must be greater than zero.")
+        except ValueError as error:
+            raise InconsistentCalculationError(str(error)) from error
+
+        subtotal = self.base_price * duration * multiplier
+        total = subtotal * (1 + tax_rate - discount_rate)
+
+        if total < 0:
+            raise InconsistentCalculationError(
+                "Calculated total cost cannot be negative."
+            )
+
+        return total

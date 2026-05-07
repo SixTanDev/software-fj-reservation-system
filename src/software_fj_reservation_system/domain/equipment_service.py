@@ -4,9 +4,12 @@ This module defines the EquipmentService class.
 EquipmentService represents the rental of equipment.
 """
 
+# pylint: disable=duplicate-code
+
 from dataclasses import dataclass
 
 from software_fj_reservation_system.domain.service import Service
+from software_fj_reservation_system.exceptions import InvalidDataError
 
 
 @dataclass
@@ -29,20 +32,28 @@ class EquipmentService(Service):
         Then, it validates the specific equipment type.
         """
         super().__post_init__()
+        try:
+            if not self.equipment_type or not self.equipment_type.strip():
+                raise ValueError("Equipment type cannot be empty.")
+        except ValueError as error:
+            raise InvalidDataError(str(error)) from error
 
-        if not self.equipment_type or not self.equipment_type.strip():
-            raise ValueError("Equipment type cannot be empty.")
-
-    def calculate_cost(self, duration: int) -> float:
+    def calculate_cost(
+        self,
+        duration: int,
+        tax_rate: float = 0.0,
+        discount_rate: float = 0.0,
+    ) -> float:
         """Calculate equipment service cost.
 
         For equipment rental, the cost is calculated using the base price
         and the rental duration.
         """
-        if duration <= 0:
-            raise ValueError("Duration must be greater than zero.")
-
-        return self.base_price * duration
+        return self._calculate_total_cost(
+            duration=duration,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate,
+        )
 
     def describe(self) -> str:
         """Return an equipment service description.

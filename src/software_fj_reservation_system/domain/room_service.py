@@ -7,6 +7,7 @@ RoomService represents the reservation of a physical room.
 from dataclasses import dataclass
 
 from software_fj_reservation_system.domain.service import Service
+from software_fj_reservation_system.exceptions import InvalidDataError
 
 
 @dataclass
@@ -29,20 +30,28 @@ class RoomService(Service):
         Then, it validates the specific room capacity.
         """
         super().__post_init__()
+        try:
+            if self.capacity <= 0:
+                raise ValueError("Room capacity must be greater than zero.")
+        except ValueError as error:
+            raise InvalidDataError(str(error)) from error
 
-        if self.capacity <= 0:
-            raise ValueError("Room capacity must be greater than zero.")
-
-    def calculate_cost(self, duration: int) -> float:
+    def calculate_cost(
+        self,
+        duration: int,
+        tax_rate: float = 0.0,
+        discount_rate: float = 0.0,
+    ) -> float:
         """Calculate room service cost.
 
         For rooms, the cost is calculated by multiplying the base price
         by the reservation duration.
         """
-        if duration <= 0:
-            raise ValueError("Duration must be greater than zero.")
-
-        return self.base_price * duration
+        return self._calculate_total_cost(
+            duration=duration,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate,
+        )
 
     def describe(self) -> str:
         """Return a room service description.
