@@ -9,6 +9,11 @@ from dataclasses import dataclass
 from software_fj_reservation_system.domain.client import Client
 from software_fj_reservation_system.domain.entity import Entity
 from software_fj_reservation_system.domain.service import Service
+from software_fj_reservation_system.exceptions import (
+    InvalidReservationError,
+    OperationNotAllowedError,
+    ServiceUnavailableError,
+)
 
 
 @dataclass
@@ -57,7 +62,7 @@ class Reservation(Entity):
         A reservation cannot be created for an inactive client.
         """
         if not self.client.active:
-            raise ValueError("Reservation client must be active.")
+            raise InvalidReservationError("Reservation client must be active.")
 
     def _validate_service(self) -> None:
         """Validate the reservation service.
@@ -65,7 +70,7 @@ class Reservation(Entity):
         A reservation cannot be created for an unavailable service.
         """
         if not self.service.available:
-            raise ValueError("Reservation service must be available.")
+            raise ServiceUnavailableError("Reservation service must be available.")
 
     def _validate_duration(self) -> None:
         """Validate the reservation duration.
@@ -73,7 +78,9 @@ class Reservation(Entity):
         The reservation duration must be greater than zero.
         """
         if self.duration <= 0:
-            raise ValueError("Reservation duration must be greater than zero.")
+            raise InvalidReservationError(
+                "Reservation duration must be greater than zero."
+            )
 
     def confirm(self) -> None:
         """Confirm the reservation.
@@ -81,7 +88,9 @@ class Reservation(Entity):
         Only pending reservations can be confirmed.
         """
         if self.status != "pending":
-            raise ValueError("Only pending reservations can be confirmed.")
+            raise OperationNotAllowedError(
+                "Only pending reservations can be confirmed."
+            )
 
         self.status = "confirmed"
 
@@ -91,11 +100,15 @@ class Reservation(Entity):
         A reservation cannot be cancelled twice.
         """
         if self.status == "cancelled":
-            raise ValueError("Reservation is already cancelled.")
+            raise OperationNotAllowedError("Reservation is already cancelled.")
+        if self.status == "processed":
+            raise OperationNotAllowedError(
+                "Processed reservations cannot be cancelled."
+            )
 
         self.status = "cancelled"
 
-    def process(self) -> float:
+    def process(self, tax_rate: float = 0.0, discount_rate: float = 0.0) -> float:
         """Process the reservation and return its total cost.
 
         Only confirmed reservations can be processed.
@@ -105,8 +118,14 @@ class Reservation(Entity):
         service type: room, equipment, or consulting.
         """
         if self.status != "confirmed":
-            raise ValueError("Only confirmed reservations can be processed.")
+            raise OperationNotAllowedError(
+                "Only confirmed reservations can be processed."
+            )
 
+        total_cost = self.service.calculate_cost(
+            self.duration,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate,
+        )
         self.status = "processed"
-
-        return self.service.calculate_cost(self.duration)
+        return total_cost

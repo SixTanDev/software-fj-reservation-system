@@ -210,5 +210,9 @@ __marimo__/
 .DS_Store
 
 AGENTS.md
+local_comments.md
+software-fj-reservation-system.zip
 
+# Local PR/report artifacts
 summary_report.md
+local_pr.md

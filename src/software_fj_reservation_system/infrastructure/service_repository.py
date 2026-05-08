@@ -1,8 +1,15 @@
-"""
-In-memory service repository.
+"""In-memory repository for services."""
 
-This module will store available services using internal lists,
-without using a database.
+from __future__ import annotations
 
-Full implementation will be carried out during the development phase.
-"""
+from software_fj_reservation_system.domain.service import Service
+from software_fj_reservation_system.infrastructure._base_repository import (
+    BaseInMemoryRepository,
+)
+
+
+class ServiceRepositoryInMemory(BaseInMemoryRepository[Service]):
+    """Store services in memory without using files or databases."""
+
+    def __init__(self) -> None:
+        super().__init__("service")

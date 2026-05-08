@@ -7,6 +7,7 @@ The Client class represents a person or customer who can make reservations.
 from dataclasses import dataclass, field
 
 from software_fj_reservation_system.domain.entity import Entity
+from software_fj_reservation_system.exceptions import InvalidDataError
 
 
 @dataclass
@@ -31,9 +32,12 @@ class Client(Entity):
         This method runs automatically after the dataclass object is created.
         It checks that the client has valid information.
         """
-        self._validate_name()
-        self._validate_email()
-        self._validate_phone()
+        try:
+            self._validate_name()
+            self._validate_email()
+            self._validate_phone()
+        except ValueError as error:
+            raise InvalidDataError(str(error)) from error
 
     def _validate_name(self) -> None:
         """Validate the client name.

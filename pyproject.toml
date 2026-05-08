@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "software-fj-reservation-system"
 version = "0.1.0"
-description = "Baseline tooling for the Software FJ academic reservation system project."
+description = "Academic reservation system for Software FJ with custom exceptions, logging, and simulation."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = []

@@ -1,1 +1,1 @@
-"""Baseline package for the future Software FJ reservation system."""
+"""Software FJ reservation system package."""

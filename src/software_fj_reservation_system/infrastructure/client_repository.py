@@ -1,8 +1,15 @@
-"""
-In-memory customer repository.
+"""In-memory repository for clients."""
 
-This module will store customers using internal lists,
-without using a database.
+from __future__ import annotations
 
-Full implementation will be carried out during the development phase.
-"""
+from software_fj_reservation_system.domain.client import Client
+from software_fj_reservation_system.infrastructure._base_repository import (
+    BaseInMemoryRepository,
+)
+
+
+class ClientRepositoryInMemory(BaseInMemoryRepository[Client]):
+    """Store clients in memory without using files or databases."""
+
+    def __init__(self) -> None:
+        super().__init__("client")

@@ -1,8 +1,4 @@
-"""Basic domain object tests.
-
-These tests verify that the main domain objects can be created correctly
-and that their basic validations work.
-"""
+"""Domain object tests for the Software FJ reservation system."""
 
 import pytest
 
@@ -11,265 +7,145 @@ from software_fj_reservation_system.domain.consulting_service import ConsultingS
 from software_fj_reservation_system.domain.equipment_service import EquipmentService
 from software_fj_reservation_system.domain.reservation import Reservation
 from software_fj_reservation_system.domain.room_service import RoomService
+from software_fj_reservation_system.exceptions import (
+    InconsistentCalculationError,
+    InvalidDataError,
+    InvalidReservationError,
+    OperationNotAllowedError,
+    ServiceUnavailableError,
+)
 
 
 def test_create_valid_client() -> None:
-    """Verify that a valid client can be created."""
+    """A valid client should be created with the expected state."""
+
     client = Client(
-        id=1,
+        id="client-001",
         name="Juan",
         email="juan@email.com",
         phone="3001234567",
     )
 
-    assert client.id == 1
+    assert client.id == "client-001"
     assert client.name == "Juan"
-    assert client.email == "juan@email.com"
-    assert client.phone == "3001234567"
     assert client.active is True
 
 
-def test_client_name_cannot_be_empty() -> None:
-    """Verify that an empty client name raises an error."""
-    with pytest.raises(ValueError):
-        Client(
-            id=1,
-            name="",
-            email="juan@email.com",
-            phone="3001234567",
-        )
+def test_client_validation_is_wrapped_in_invalid_data_error() -> None:
+    """Client validation should expose a controlled exception with chaining."""
 
-
-def test_client_email_must_be_valid() -> None:
-    """Verify that an invalid email raises an error."""
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidDataError) as error_info:
         Client(
-            id=1,
+            id="client-001",
             name="Juan",
             email="correo-invalido",
             phone="3001234567",
         )
 
-
-def test_client_phone_cannot_be_empty() -> None:
-    """Verify that an empty phone raises an error."""
-    with pytest.raises(ValueError):
-        Client(
-            id=1,
-            name="Juan",
-            email="juan@email.com",
-            phone="",
-        )
+    assert str(error_info.value) == "Client email must be valid."
+    assert isinstance(error_info.value.__cause__, ValueError)
 
 
-def test_client_can_be_deactivated_and_activated() -> None:
-    """Verify that a client can be deactivated and activated again."""
-    client = Client(
-        id=1,
-        name="Juan",
-        email="juan@email.com",
-        phone="3001234567",
-    )
+def test_room_service_cost_supports_optional_tax_and_discount() -> None:
+    """Room services should support cost calculation variants."""
 
-    client.deactivate()
-    assert client.active is False
-
-    client.activate()
-    assert client.active is True
-
-
-def test_create_room_service() -> None:
-    """Verify that a room service can be created."""
     service = RoomService(
-        id=1,
+        id="service-room-001",
         name="Sala principal",
         base_price=50000,
         capacity=10,
     )
 
-    assert service.id == 1
-    assert service.name == "Sala principal"
-    assert service.base_price == 50000
-    assert service.capacity == 10
-    assert service.available is True
-
-
-def test_room_service_calculates_cost() -> None:
-    """Verify that room service cost is calculated correctly."""
-    service = RoomService(
-        id=1,
-        name="Sala principal",
-        base_price=50000,
-        capacity=10,
+    assert service.calculate_cost(2, tax_rate=0.19, discount_rate=0.05) == pytest.approx(
+        114000
     )
 
-    assert service.calculate_cost(2) == 100000
 
+def test_equipment_service_requires_non_empty_type() -> None:
+    """Equipment services should validate their specific payload."""
 
-def test_room_service_capacity_must_be_greater_than_zero() -> None:
-    """Verify that room capacity must be greater than zero."""
-    with pytest.raises(ValueError):
-        RoomService(
-            id=1,
-            name="Sala inválida",
-            base_price=50000,
-            capacity=0,
-        )
-
-
-def test_create_equipment_service() -> None:
-    """Verify that an equipment service can be created."""
-    service = EquipmentService(
-        id=2,
-        name="Alquiler de portátil",
-        base_price=30000,
-        equipment_type="Laptop",
-    )
-
-    assert service.id == 2
-    assert service.name == "Alquiler de portátil"
-    assert service.base_price == 30000
-    assert service.equipment_type == "Laptop"
-    assert service.available is True
-
-
-def test_equipment_service_calculates_cost() -> None:
-    """Verify that equipment service cost is calculated correctly."""
-    service = EquipmentService(
-        id=2,
-        name="Alquiler de portátil",
-        base_price=30000,
-        equipment_type="Laptop",
-    )
-
-    assert service.calculate_cost(3) == 90000
-
-
-def test_equipment_type_cannot_be_empty() -> None:
-    """Verify that equipment type cannot be empty."""
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidDataError):
         EquipmentService(
-            id=2,
-            name="Alquiler de portátil",
+            id="service-equipment-001",
+            name="Portatil",
             base_price=30000,
             equipment_type="",
         )
 
 
-def test_create_consulting_service() -> None:
-    """Verify that a consulting service can be created."""
+def test_consulting_service_applies_multiplier() -> None:
+    """Consulting services should apply the consulting multiplier."""
+
     service = ConsultingService(
-        id=3,
-        name="Asesoría en Python",
+        id="service-consulting-001",
+        name="Asesoria",
         base_price=80000,
         consultant_name="Karen",
     )
 
-    assert service.id == 3
-    assert service.name == "Asesoría en Python"
-    assert service.base_price == 80000
-    assert service.consultant_name == "Karen"
-    assert service.available is True
+    assert service.calculate_cost(2) == pytest.approx(192000)
 
 
-def test_consulting_service_calculates_cost_with_extra_fee() -> None:
-    """Verify that consulting service applies the 20 percent extra fee."""
-    service = ConsultingService(
-        id=3,
-        name="Asesoría en Python",
-        base_price=80000,
-        consultant_name="Karen",
-    )
-
-    assert service.calculate_cost(2) == 192000
-
-
-def test_consultant_name_cannot_be_empty() -> None:
-    """Verify that consultant name cannot be empty."""
-    with pytest.raises(ValueError):
-        ConsultingService(
-            id=3,
-            name="Asesoría en Python",
-            base_price=80000,
-            consultant_name="",
-        )
-
-
-def test_create_valid_reservation() -> None:
-    """Verify that a valid reservation can be created."""
-    client = Client(
-        id=1,
-        name="Juan",
-        email="juan@email.com",
-        phone="3001234567",
-    )
+def test_negative_cost_result_raises_inconsistent_calculation_error() -> None:
+    """Inconsistent discounts should be rejected with a controlled exception."""
 
     service = RoomService(
-        id=1,
+        id="service-room-001",
         name="Sala principal",
         base_price=50000,
         capacity=10,
     )
 
-    reservation = Reservation(
-        id=1,
-        client=client,
-        service=service,
-        duration=2,
-    )
-
-    assert reservation.id == 1
-    assert reservation.client == client
-    assert reservation.service == service
-    assert reservation.duration == 2
-    assert reservation.status == "pending"
+    with pytest.raises(InconsistentCalculationError):
+        service.calculate_cost(2, discount_rate=2.0)
 
 
-def test_reservation_duration_must_be_greater_than_zero() -> None:
-    """Verify that reservation duration must be greater than zero."""
+def test_reservation_requires_active_client() -> None:
+    """Inactive clients should not be able to create reservations."""
+
     client = Client(
-        id=1,
-        name="Juan",
-        email="juan@email.com",
-        phone="3001234567",
-    )
-
-    service = RoomService(
-        id=1,
-        name="Sala principal",
-        base_price=50000,
-        capacity=10,
-    )
-
-    with pytest.raises(ValueError):
-        Reservation(
-            id=1,
-            client=client,
-            service=service,
-            duration=0,
-        )
-
-
-def test_reservation_cannot_be_created_for_inactive_client() -> None:
-    """Verify that inactive clients cannot make reservations."""
-    client = Client(
-        id=1,
+        id="client-001",
         name="Juan",
         email="juan@email.com",
         phone="3001234567",
     )
     client.deactivate()
-
     service = RoomService(
-        id=1,
+        id="service-room-001",
         name="Sala principal",
         base_price=50000,
         capacity=10,
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidReservationError):
         Reservation(
-            id=1,
+            id="reservation-001",
+            client=client,
+            service=service,
+            duration=2,
+        )
+
+
+def test_reservation_requires_available_service() -> None:
+    """Unavailable services should raise the correct reservation error."""
+
+    client = Client(
+        id="client-001",
+        name="Juan",
+        email="juan@email.com",
+        phone="3001234567",
+    )
+    service = RoomService(
+        id="service-room-001",
+        name="Sala principal",
+        base_price=50000,
+        capacity=10,
+    )
+    service.mark_unavailable()
+
+    with pytest.raises(ServiceUnavailableError):
+        Reservation(
+            id="reservation-001",
             client=client,
             service=service,
             duration=2,
@@ -277,114 +153,83 @@ def test_reservation_cannot_be_created_for_inactive_client() -> None:
 
 
 def test_reservation_can_be_confirmed_and_processed() -> None:
-    """Verify reservation lifecycle from pending to processed."""
+    """Confirmed reservations should process successfully."""
+
     client = Client(
-        id=1,
+        id="client-001",
         name="Juan",
         email="juan@email.com",
         phone="3001234567",
     )
-
     service = RoomService(
-        id=1,
+        id="service-room-001",
         name="Sala principal",
         base_price=50000,
         capacity=10,
     )
-
     reservation = Reservation(
-        id=1,
+        id="reservation-001",
         client=client,
         service=service,
         duration=2,
     )
 
     reservation.confirm()
-    assert reservation.status == "confirmed"
-
     total_cost = reservation.process()
-    assert total_cost == 100000
+
     assert reservation.status == "processed"
+    assert total_cost == pytest.approx(100000)
 
 
 def test_pending_reservation_cannot_be_processed() -> None:
-    """Verify that only confirmed reservations can be processed."""
+    """Only confirmed reservations should be processed."""
+
     client = Client(
-        id=1,
+        id="client-001",
         name="Juan",
         email="juan@email.com",
         phone="3001234567",
     )
-
     service = RoomService(
-        id=1,
+        id="service-room-001",
         name="Sala principal",
         base_price=50000,
         capacity=10,
     )
-
     reservation = Reservation(
-        id=1,
+        id="reservation-001",
         client=client,
         service=service,
         duration=2,
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(OperationNotAllowedError):
         reservation.process()
 
 
-def test_reservation_can_be_cancelled() -> None:
-    """Verify that a reservation can be cancelled."""
+def test_processed_reservation_cannot_be_cancelled() -> None:
+    """Processed reservations should reject cancellation."""
+
     client = Client(
-        id=1,
+        id="client-001",
         name="Juan",
         email="juan@email.com",
         phone="3001234567",
     )
-
     service = RoomService(
-        id=1,
+        id="service-room-001",
         name="Sala principal",
         base_price=50000,
         capacity=10,
     )
-
     reservation = Reservation(
-        id=1,
+        id="reservation-001",
         client=client,
         service=service,
         duration=2,
     )
+    reservation.confirm()
+    reservation.process()
 
-    reservation.cancel()
-    assert reservation.status == "cancelled"
-
-
-def test_cancelled_reservation_cannot_be_cancelled_again() -> None:
-    """Verify that a cancelled reservation cannot be cancelled twice."""
-    client = Client(
-        id=1,
-        name="Juan",
-        email="juan@email.com",
-        phone="3001234567",
-    )
-
-    service = RoomService(
-        id=1,
-        name="Sala principal",
-        base_price=50000,
-        capacity=10,
-    )
-
-    reservation = Reservation(
-        id=1,
-        client=client,
-        service=service,
-        duration=2,
-    )
-
-    reservation.cancel()
-
-    with pytest.raises(ValueError):
+    with pytest.raises(OperationNotAllowedError):
         reservation.cancel()

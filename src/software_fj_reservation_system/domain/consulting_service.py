@@ -7,6 +7,7 @@ ConsultingService represents a specialized consulting service.
 from dataclasses import dataclass
 
 from software_fj_reservation_system.domain.service import Service
+from software_fj_reservation_system.exceptions import InvalidDataError
 
 
 @dataclass
@@ -29,23 +30,29 @@ class ConsultingService(Service):
         Then, it validates the consultant name.
         """
         super().__post_init__()
+        try:
+            if not self.consultant_name or not self.consultant_name.strip():
+                raise ValueError("Consultant name cannot be empty.")
+        except ValueError as error:
+            raise InvalidDataError(str(error)) from error
 
-        if not self.consultant_name or not self.consultant_name.strip():
-            raise ValueError("Consultant name cannot be empty.")
-
-    def calculate_cost(self, duration: int) -> float:
+    def calculate_cost(
+        self,
+        duration: int,
+        tax_rate: float = 0.0,
+        discount_rate: float = 0.0,
+    ) -> float:
         """Calculate consulting service cost.
 
         Consulting services have an additional fee because they require
         specialized knowledge.
         """
-        if duration <= 0:
-            raise ValueError("Duration must be greater than zero.")
-
-        # Consulting services are 20% more expensive than the base calculation.
-        consulting_fee = 1.2
-
-        return self.base_price * duration * consulting_fee
+        return self._calculate_total_cost(
+            duration=duration,
+            multiplier=1.2,
+            tax_rate=tax_rate,
+            discount_rate=discount_rate,
+        )
 
     def describe(self) -> str:
         """Return a consulting service description.
