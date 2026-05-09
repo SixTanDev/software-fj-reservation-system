@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from software_fj_reservation_system.application.create_reservation import (
     create_reservation,
@@ -95,11 +96,12 @@ def test_controlled_error_is_logged_by_use_case(tmp_path: Path) -> None:
 
     logger.close()
     content = log_path.read_text(encoding="utf-8")
+    assert "Service input validation failed" in content
     assert "Unknown service type 'unknown'." in content
 
 
 def test_create_service_preserves_exception_chaining(tmp_path: Path) -> None:
-    """Numeric parsing failures should be chained to the controlled application error."""
+    """Pydantic validation failures should be chained to the application error."""
 
     logger = FileLogger(log_path=tmp_path / "logs" / "system.log")
     service_repository = ServiceRepositoryInMemory()
@@ -116,11 +118,11 @@ def test_create_service_preserves_exception_chaining(tmp_path: Path) -> None:
         )
 
     logger.close()
-    assert isinstance(error_info.value.__cause__, ValueError)
+    assert isinstance(error_info.value.__cause__, ValidationError)
 
 
 def test_create_reservation_preserves_exception_chaining(tmp_path: Path) -> None:
-    """Duration parsing failures should be chained to the controlled reservation error."""
+    """Pydantic failures should be chained to the controlled reservation error."""
 
     logger = FileLogger(log_path=tmp_path / "logs" / "system.log")
     client_repository = ClientRepositoryInMemory()
@@ -151,7 +153,7 @@ def test_create_reservation_preserves_exception_chaining(tmp_path: Path) -> None
         )
 
     logger.close()
-    assert isinstance(error_info.value.__cause__, ValueError)
+    assert isinstance(error_info.value.__cause__, ValidationError)
 
 
 def _client_payload() -> dict[str, str]:
