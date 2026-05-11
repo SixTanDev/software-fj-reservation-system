@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
+
+from software_fj_reservation_system.application.schemas import (
+    ServiceInput,
+    raise_logged_validation_error,
+    summarize_validation_error,
+)
 from software_fj_reservation_system.domain.consulting_service import ConsultingService
 from software_fj_reservation_system.domain.equipment_service import EquipmentService
 from software_fj_reservation_system.domain.room_service import RoomService
@@ -25,8 +32,20 @@ def create_service(
     state = {"payload": payload}
 
     try:
-        service = _build_service(payload)
+        validated_input = ServiceInput.model_validate(payload)
+        service = _build_service(validated_input)
         repository.add(service)
+    except ValidationError as error:
+        raise_logged_validation_error(
+            logger,
+            "create_service",
+            state,
+            InvalidDataError(
+                "Service input validation failed: "
+                f"{summarize_validation_error(error)}"
+            ),
+            error,
+        )
     except ManagementSystemError as error:
         logger.log_error("create_service", str(error), error, state=state)
         raise
@@ -39,74 +58,36 @@ def create_service(
     return service
 
 
-def _build_service(payload: dict[str, Any]) -> Service:
+def _build_service(validated_input: ServiceInput) -> Service:
     """Build a concrete service using a small factory method."""
 
-    service_type = _require_text(payload, "service_type").lower()
-    service_id = _require_text(payload, "id")
-    name = _require_text(payload, "name")
-    base_price = _parse_float(payload, "base_price", "Service base price must be numeric.")
+    service_type = validated_input.service_type
+    service_id = validated_input.id or Service.create_id()
+    name = validated_input.name
+    base_price = validated_input.base_price
 
     if service_type == "room":
-        capacity = _parse_int(payload, "capacity", "Room capacity must be numeric.")
         return RoomService(
             id=service_id,
             name=name,
             base_price=base_price,
-            capacity=capacity,
+            capacity=validated_input.capacity or 1,
         )
 
     if service_type == "equipment":
-        equipment_type = _require_text(payload, "equipment_type")
         return EquipmentService(
             id=service_id,
             name=name,
             base_price=base_price,
-            equipment_type=equipment_type,
+            equipment_type=validated_input.equipment_type or "",
         )
 
     if service_type == "consulting":
-        consultant_name = _require_text(payload, "consultant_name")
         return ConsultingService(
             id=service_id,
             name=name,
             base_price=base_price,
-            consultant_name=consultant_name,
+            consultant_name=validated_input.consultant_name or "",
         )
 
     raise InvalidDataError(f"Unknown service type '{service_type}'.")
-
-
-def _require_text(payload: dict[str, Any], field_name: str) -> str:
-    """Return a required text field or raise a controlled error."""
-
-    try:
-        value = str(payload[field_name]).strip()
-    except KeyError as error:
-        raise InvalidDataError(f"Service field '{field_name}' is required.") from error
-
-    if not value:
-        raise InvalidDataError(f"Service field '{field_name}' cannot be empty.")
-    return value
-
-
-def _parse_float(payload: dict[str, Any], field_name: str, message: str) -> float:
-    """Parse a numeric field and chain low-level parsing failures."""
-
-    try:
-        return float(payload[field_name])
-    except KeyError as error:
-        raise InvalidDataError(f"Service field '{field_name}' is required.") from error
-    except (TypeError, ValueError) as error:
-        raise InvalidDataError(message) from error
-
-
-def _parse_int(payload: dict[str, Any], field_name: str, message: str) -> int:
-    """Parse an integer field and chain low-level parsing failures."""
-
-    try:
-        return int(payload[field_name])
-    except KeyError as error:
-        raise InvalidDataError(f"Service field '{field_name}' is required.") from error
-    except (TypeError, ValueError) as error:
-        raise InvalidDataError(message) from error

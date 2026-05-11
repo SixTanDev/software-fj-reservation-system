@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
+
+from software_fj_reservation_system.application.schemas import (
+    ProcessReservationInput,
+    raise_logged_validation_error,
+    summarize_validation_error,
+)
 from software_fj_reservation_system.domain.reservation import Reservation
 from software_fj_reservation_system.exceptions import (
     InconsistentCalculationError,
@@ -75,24 +82,24 @@ def process_reservation(
     state = {"payload": payload}
 
     try:
-        reservation_id = str(payload["reservation_id"]).strip()
-        reservation = repository.get_by_id(reservation_id)
+        validated_input = ProcessReservationInput.model_validate(payload)
+        reservation = repository.get_by_id(validated_input.reservation_id)
         state["current_status"] = reservation.status
         total_cost = reservation.process(
-            tax_rate=_parse_rate(payload, "tax_rate"),
-            discount_rate=_parse_rate(payload, "discount_rate"),
+            tax_rate=validated_input.tax_rate,
+            discount_rate=validated_input.discount_rate,
         )
-    except KeyError as error:
-        wrapped_error = InconsistentCalculationError(
-            "Reservation field 'reservation_id' is required."
-        )
-        logger.log_error(
+    except ValidationError as error:
+        raise_logged_validation_error(
+            logger,
             "process_reservation",
-            str(wrapped_error),
-            wrapped_error,
-            state=state,
+            state,
+            InconsistentCalculationError(
+                "Reservation processing input validation failed: "
+                f"{summarize_validation_error(error)}"
+            ),
+            error,
         )
-        raise wrapped_error from error
     except ManagementSystemError as error:
         logger.log_error("process_reservation", str(error), error, state=state)
         raise
@@ -107,15 +114,3 @@ def process_reservation(
         },
     )
     return total_cost
-
-
-def _parse_rate(payload: dict[str, Any], field_name: str) -> float:
-    """Parse optional pricing modifiers and chain conversion failures."""
-
-    raw_value = payload.get(field_name, 0.0)
-    try:
-        return float(raw_value)
-    except (TypeError, ValueError) as error:
-        raise InconsistentCalculationError(
-            f"Reservation field '{field_name}' must be numeric."
-        ) from error

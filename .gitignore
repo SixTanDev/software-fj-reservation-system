@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[codz]
+*.py[cod]
 *$py.class
 
 # C extensions
@@ -210,9 +210,12 @@ __marimo__/
 .DS_Store
 
 AGENTS.md
-local_comments.md
 software-fj-reservation-system.zip
 
-# Local PR/report artifacts
+# Local-only delivery artifacts
 summary_report.md
 local_pr.md
+local_comments.md
+
+# Runtime logs
+logs/

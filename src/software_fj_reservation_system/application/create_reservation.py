@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
+
+from software_fj_reservation_system.application.schemas import (
+    ReservationInput,
+    raise_logged_validation_error,
+    summarize_validation_error,
+)
 from software_fj_reservation_system.domain.reservation import Reservation
 from software_fj_reservation_system.exceptions import (
-    InvalidDataError,
     InvalidReservationError,
     ManagementSystemError,
 )
@@ -34,18 +40,25 @@ def create_reservation(
     state = {"payload": payload}
 
     try:
-        reservation_id = _require_text(payload, "id", "Reservation field")
-        client_id = _require_text(payload, "client_id", "Reservation field")
-        service_id = _require_text(payload, "service_id", "Reservation field")
-        duration = _parse_duration(payload)
-
+        validated_input = ReservationInput.model_validate(payload)
         reservation = Reservation(
-            id=reservation_id,
-            client=client_repository.get_by_id(client_id),
-            service=service_repository.get_by_id(service_id),
-            duration=duration,
+            id=validated_input.id or Reservation.create_id(),
+            client=client_repository.get_by_id(validated_input.client_id),
+            service=service_repository.get_by_id(validated_input.service_id),
+            duration=validated_input.duration,
         )
         reservation_repository.add(reservation)
+    except ValidationError as error:
+        raise_logged_validation_error(
+            logger,
+            "create_reservation",
+            state,
+            InvalidReservationError(
+                "Reservation input validation failed: "
+                f"{summarize_validation_error(error)}"
+            ),
+            error,
+        )
     except ManagementSystemError as error:
         logger.log_error("create_reservation", str(error), error, state=state)
         raise
@@ -61,29 +74,3 @@ def create_reservation(
         },
     )
     return reservation
-
-
-def _parse_duration(payload: dict[str, Any]) -> int:
-    """Parse reservation duration and chain low-level conversion failures."""
-
-    try:
-        return int(payload["duration"])
-    except KeyError as error:
-        raise InvalidReservationError("Reservation field 'duration' is required.") from error
-    except (TypeError, ValueError) as error:
-        raise InvalidReservationError(
-            "Reservation duration must be a valid integer."
-        ) from error
-
-
-def _require_text(payload: dict[str, Any], field_name: str, prefix: str) -> str:
-    """Return a required text field or raise a controlled error."""
-
-    try:
-        value = str(payload[field_name]).strip()
-    except KeyError as error:
-        raise InvalidDataError(f"{prefix} '{field_name}' is required.") from error
-
-    if not value:
-        raise InvalidDataError(f"{prefix} '{field_name}' cannot be empty.")
-    return value
