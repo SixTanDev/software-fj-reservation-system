@@ -117,14 +117,17 @@ The desktop application supports:
 
 The UI uses a restrained dark palette aligned with a professional academic tool:
 
-- main background: `#0F172A`
-- primary surface: `#111827`
-- secondary surface: `#1E293B`
+- main background: `#071224`
+- primary surface: `#0E1A2B`
+- secondary surface: `#132238`
+- table/header background: `#1E2B3F`
+- border: `#2A3A55`
 - main text: `#F8FAFC`
-- muted text: `#CBD5E1`
-- primary action: `#2563EB`
-- success: `#16A34A`
-- error: `#DC2626`
+- muted text: `#B6C2D1`
+- primary action: `#3B82F6`
+- primary action hover: `#2563EB`
+- success: `#22C55E`
+- error: `#EF4444`
 - warning: `#F59E0B`
 
 The interface is styled through centralized `ttk.Style` configuration in:
