@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 try:
     import tkinter as tk
     from tkinter import messagebox, ttk
@@ -24,7 +26,12 @@ from software_fj_reservation_system.exceptions import (
 from software_fj_reservation_system.presentation.controller import (
     ReservationSystemController,
 )
-from software_fj_reservation_system.presentation.styles import PALETTE, configure_styles
+from software_fj_reservation_system.presentation.styles import (
+    MONOSPACE_FONT,
+    PALETTE,
+    SPACING,
+    configure_styles,
+)
 
 
 def _ensure_tk_available() -> None:
@@ -54,8 +61,8 @@ class ReservationDesktopApp:
 
         configure_styles(self.root)
         self.root.title("Software FJ Reservation System")
-        self.root.geometry("1200x780")
-        self.root.minsize(1100, 720)
+        self.root.geometry("1240x820")
+        self.root.minsize(1120, 740)
 
         self.status_text = tk.StringVar(value=self.controller.last_operation_message)
         self.status_level = tk.StringVar(value=self.controller.last_operation_level)
@@ -81,6 +88,9 @@ class ReservationDesktopApp:
         self.process_tax_var = tk.StringVar(value="0")
         self.process_discount_var = tk.StringVar(value="0")
         self.dashboard_reservations_tree = None
+        self.dashboard_empty_label = None
+        self.dashboard_reservations_scrollbar = None
+        self.dashboard_reservations_x_scrollbar = None
         self.clients_tree = None
         self.services_tree = None
         self.client_combo = None
@@ -106,13 +116,13 @@ class ReservationDesktopApp:
     def _build_layout(self) -> None:
         """Build the application layout."""
 
-        container = ttk.Frame(self.root, style="App.TFrame", padding=24)
+        container = ttk.Frame(self.root, style="App.TFrame", padding=SPACING["page"])
         container.pack(fill="both", expand=True)
         container.columnconfigure(0, weight=1)
         container.rowconfigure(1, weight=1)
 
-        header = ttk.Frame(container, style="Surface.TFrame", padding=24)
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 16))
+        header = ttk.Frame(container, style="Surface.TFrame", padding=SPACING["page"])
+        header.grid(row=0, column=0, sticky="ew", pady=(0, SPACING["section"]))
         header.columnconfigure(0, weight=1)
         ttk.Label(
             header,
@@ -128,11 +138,12 @@ class ReservationDesktopApp:
         notebook = ttk.Notebook(container)
         notebook.grid(row=1, column=0, sticky="nsew")
 
-        self.dashboard_tab = ttk.Frame(notebook, style="App.TFrame", padding=18)
-        self.clients_tab = ttk.Frame(notebook, style="App.TFrame", padding=18)
-        self.services_tab = ttk.Frame(notebook, style="App.TFrame", padding=18)
-        self.reservations_tab = ttk.Frame(notebook, style="App.TFrame", padding=18)
-        self.logs_tab = ttk.Frame(notebook, style="App.TFrame", padding=18)
+        tab_padding = SPACING["page"]
+        self.dashboard_tab = ttk.Frame(notebook, style="App.TFrame", padding=tab_padding)
+        self.clients_tab = ttk.Frame(notebook, style="App.TFrame", padding=tab_padding)
+        self.services_tab = ttk.Frame(notebook, style="App.TFrame", padding=tab_padding)
+        self.reservations_tab = ttk.Frame(notebook, style="App.TFrame", padding=tab_padding)
+        self.logs_tab = ttk.Frame(notebook, style="App.TFrame", padding=tab_padding)
 
         notebook.add(self.dashboard_tab, text="Dashboard")
         notebook.add(self.clients_tab, text="Clients")
@@ -151,7 +162,7 @@ class ReservationDesktopApp:
             textvariable=self.status_text,
             style="Status.TLabel",
         )
-        self.status_label.grid(row=2, column=0, sticky="ew", pady=(16, 0))
+        self.status_label.grid(row=2, column=0, sticky="ew", pady=(SPACING["section"], 0))
         self._apply_status_style()
 
     def _build_dashboard_tab(self) -> None:
@@ -159,6 +170,7 @@ class ReservationDesktopApp:
 
         for index in range(4):
             self.dashboard_tab.columnconfigure(index, weight=1, uniform="cards")
+        self.dashboard_tab.rowconfigure(0, minsize=120)
         self.dashboard_tab.rowconfigure(1, weight=1)
 
         self._build_summary_card(
@@ -190,9 +202,16 @@ class ReservationDesktopApp:
             self.dashboard_tab,
             text="System Overview",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        overview.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(18, 0), padx=(0, 9))
+        overview.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="nsew",
+            pady=(SPACING["section"], 0),
+            padx=(0, SPACING["field"]),
+        )
         overview.columnconfigure(0, weight=1)
         ttk.Label(
             overview,
@@ -211,9 +230,16 @@ class ReservationDesktopApp:
             self.dashboard_tab,
             text="Recent Reservations",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        activity.grid(row=1, column=2, columnspan=2, sticky="nsew", pady=(18, 0), padx=(9, 0))
+        activity.grid(
+            row=1,
+            column=2,
+            columnspan=2,
+            sticky="nsew",
+            pady=(SPACING["section"], 0),
+            padx=(SPACING["field"], 0),
+        )
         activity.columnconfigure(0, weight=1)
         activity.rowconfigure(0, weight=1)
         self.dashboard_reservations_tree = self._create_treeview(
@@ -225,8 +251,23 @@ class ReservationDesktopApp:
                 "service": "Service",
                 "status": "Status",
             },
+            column_widths={"id": 170, "client": 190, "service": 200, "status": 110},
         )
         self.dashboard_reservations_tree.grid(row=0, column=0, sticky="nsew")
+        self.dashboard_reservations_scrollbar = self._attach_vertical_scrollbar(
+            activity,
+            self.dashboard_reservations_tree,
+        )
+        self.dashboard_reservations_x_scrollbar = self._attach_horizontal_scrollbar(
+            activity,
+            self.dashboard_reservations_tree,
+        )
+        self.dashboard_empty_label = ttk.Label(
+            activity,
+            text="No reservations yet.",
+            style="Empty.TLabel",
+            anchor="center",
+        )
 
     def _build_summary_card(
         self,
@@ -237,12 +278,25 @@ class ReservationDesktopApp:
     ) -> None:
         """Build one summary card on the dashboard."""
 
-        card = ttk.Frame(parent, style="Card.TFrame", padding=18)
-        card.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 6, 6))
-        ttk.Label(card, text=title, style="Section.TLabel").pack(anchor="w")
-        ttk.Label(card, textvariable=value_var, style="Metric.TLabel").pack(
-            anchor="w",
-            pady=(10, 0),
+        card = ttk.Frame(parent, style="Card.TFrame", padding=SPACING["panel"])
+        card.grid(
+            row=0,
+            column=column,
+            sticky="nsew",
+            padx=(0 if column == 0 else SPACING["field"] // 2, SPACING["field"] // 2),
+        )
+        card.columnconfigure(0, weight=1)
+        card.rowconfigure(1, weight=1)
+        ttk.Label(card, text=title, style="CardTitle.TLabel").grid(
+            row=0,
+            column=0,
+            sticky="w",
+        )
+        ttk.Label(card, textvariable=value_var, style="Metric.TLabel").grid(
+            row=1,
+            column=0,
+            sticky="sw",
+            pady=(SPACING["label"], 0),
         )
 
     def _build_clients_tab(self) -> None:
@@ -255,9 +309,10 @@ class ReservationDesktopApp:
             self.clients_tab,
             text="Register Client",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        form.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
+        form.grid(row=0, column=0, sticky="new", padx=(0, SPACING["section"]))
+        form.columnconfigure(0, minsize=320, weight=1)
 
         self._add_labeled_entry(form, 0, "Name", self.client_name_var)
         self._add_labeled_entry(form, 1, "Email", self.client_email_var)
@@ -267,13 +322,13 @@ class ReservationDesktopApp:
             text="Register Client",
             style="Primary.TButton",
             command=self._register_client,
-        ).grid(row=3, column=0, sticky="ew", pady=(16, 0))
+        ).grid(row=6, column=0, sticky="ew", pady=(SPACING["section"], 0))
 
         table_panel = ttk.LabelFrame(
             self.clients_tab,
             text="Registered Clients",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
         table_panel.grid(row=0, column=1, sticky="nsew")
         table_panel.columnconfigure(0, weight=1)
@@ -289,8 +344,17 @@ class ReservationDesktopApp:
                 "phone": "Phone",
                 "active": "Active",
             },
+            column_widths={
+                "id": 170,
+                "name": 180,
+                "email": 250,
+                "phone": 150,
+                "active": 90,
+            },
         )
         self.clients_tree.grid(row=0, column=0, sticky="nsew")
+        self._attach_vertical_scrollbar(table_panel, self.clients_tree)
+        self._attach_horizontal_scrollbar(table_panel, self.clients_tree)
 
     def _build_services_tab(self) -> None:
         """Build the services tab."""
@@ -302,9 +366,10 @@ class ReservationDesktopApp:
             self.services_tab,
             text="Create Service",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        form.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
+        form.grid(row=0, column=0, sticky="new", padx=(0, SPACING["section"]))
+        form.columnconfigure(0, minsize=320, weight=1)
 
         ttk.Label(form, text="Service Type", style="Muted.TLabel").grid(
             row=0,
@@ -317,11 +382,16 @@ class ReservationDesktopApp:
             values=("room", "equipment", "consulting"),
             state="readonly",
         )
-        service_type_combo.grid(row=1, column=0, sticky="ew", pady=(6, 12))
+        service_type_combo.grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            pady=(SPACING["label"], SPACING["field"]),
+        )
         service_type_combo.bind("<<ComboboxSelected>>", self._update_service_extra_field)
 
-        self._add_labeled_entry(form, 2, "Name", self.service_name_var)
-        self._add_labeled_entry(form, 4, "Base Price", self.service_base_price_var)
+        self._add_labeled_entry(form, 1, "Name", self.service_name_var)
+        self._add_labeled_entry(form, 2, "Base Price", self.service_base_price_var)
         ttk.Label(
             form,
             textvariable=self.service_extra_label_var,
@@ -331,20 +401,20 @@ class ReservationDesktopApp:
             row=7,
             column=0,
             sticky="ew",
-            pady=(6, 12),
+            pady=(SPACING["label"], SPACING["field"]),
         )
         ttk.Button(
             form,
             text="Create Service",
             style="Primary.TButton",
             command=self._create_service,
-        ).grid(row=8, column=0, sticky="ew", pady=(16, 0))
+        ).grid(row=8, column=0, sticky="ew", pady=(SPACING["section"], 0))
 
         table_panel = ttk.LabelFrame(
             self.services_tab,
             text="Available Services",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
         table_panel.grid(row=0, column=1, sticky="nsew")
         table_panel.columnconfigure(0, weight=1)
@@ -361,23 +431,34 @@ class ReservationDesktopApp:
                 "availability": "Available",
                 "details": "Details",
             },
+            column_widths={
+                "id": 170,
+                "type": 120,
+                "name": 190,
+                "price": 125,
+                "availability": 95,
+                "details": 320,
+            },
         )
         self.services_tree.grid(row=0, column=0, sticky="nsew")
+        self._attach_vertical_scrollbar(table_panel, self.services_tree)
+        self._attach_horizontal_scrollbar(table_panel, self.services_tree)
 
     def _build_reservations_tab(self) -> None:
         """Build the reservations tab."""
 
         for index in range(2):
-            self.reservations_tab.columnconfigure(index, weight=1)
+            self.reservations_tab.columnconfigure(index, weight=1, uniform="top_panels")
         self.reservations_tab.rowconfigure(1, weight=1)
 
         create_panel = ttk.LabelFrame(
             self.reservations_tab,
             text="Create Reservation",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        create_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        create_panel.grid(row=0, column=0, sticky="new", padx=(0, SPACING["field"]))
+        create_panel.columnconfigure(0, weight=1)
 
         ttk.Label(create_panel, text="Client", style="Muted.TLabel").grid(
             row=0,
@@ -389,7 +470,12 @@ class ReservationDesktopApp:
             textvariable=self.reservation_client_var,
             state="readonly",
         )
-        self.client_combo.grid(row=1, column=0, sticky="ew", pady=(6, 12))
+        self.client_combo.grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            pady=(SPACING["label"], SPACING["field"]),
+        )
 
         ttk.Label(create_panel, text="Service", style="Muted.TLabel").grid(
             row=2,
@@ -401,11 +487,16 @@ class ReservationDesktopApp:
             textvariable=self.reservation_service_var,
             state="readonly",
         )
-        self.service_combo.grid(row=3, column=0, sticky="ew", pady=(6, 12))
+        self.service_combo.grid(
+            row=3,
+            column=0,
+            sticky="ew",
+            pady=(SPACING["label"], SPACING["field"]),
+        )
 
         self._add_labeled_entry(
             create_panel,
-            4,
+            2,
             "Duration",
             self.reservation_duration_var,
         )
@@ -414,23 +505,23 @@ class ReservationDesktopApp:
             text="Create Reservation",
             style="Primary.TButton",
             command=self._create_reservation,
-        ).grid(row=6, column=0, sticky="ew", pady=(16, 0))
+        ).grid(row=6, column=0, sticky="ew", pady=(SPACING["section"], 0))
 
         manage_panel = ttk.LabelFrame(
             self.reservations_tab,
             text="Manage Reservation",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        manage_panel.grid(row=0, column=1, sticky="nsew")
+        manage_panel.grid(row=0, column=1, sticky="new", padx=(SPACING["field"], 0))
         manage_panel.columnconfigure(0, weight=1)
         ttk.Label(
             manage_panel,
             textvariable=self.selected_reservation_text,
-            style="Body.TLabel",
+            style="Selection.TLabel",
             wraplength=440,
             justify="left",
-        ).grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        ).grid(row=0, column=0, sticky="ew", pady=(0, SPACING["field"]))
 
         button_row = ttk.Frame(manage_panel, style="Surface.TFrame")
         button_row.grid(row=1, column=0, sticky="ew")
@@ -439,37 +530,66 @@ class ReservationDesktopApp:
         ttk.Button(
             button_row,
             text="Confirm",
-            style="Primary.TButton",
+            style="Success.TButton",
             command=self._confirm_reservation,
-        ).grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ).grid(row=0, column=0, sticky="ew", padx=(0, SPACING["label"]))
         ttk.Button(
             button_row,
             text="Cancel",
-            style="Secondary.TButton",
+            style="Danger.TButton",
             command=self._cancel_reservation,
-        ).grid(row=0, column=1, sticky="ew", padx=6)
+        ).grid(row=0, column=1, sticky="ew", padx=(0, SPACING["label"]))
         ttk.Button(
             button_row,
             text="Process",
             style="Primary.TButton",
             command=self._process_reservation,
-        ).grid(row=0, column=2, sticky="ew", padx=(6, 0))
+        ).grid(row=0, column=2, sticky="ew")
 
-        self._add_labeled_entry(manage_panel, 2, "Tax Rate", self.process_tax_var)
-        self._add_labeled_entry(
-            manage_panel,
-            4,
-            "Discount Rate",
-            self.process_discount_var,
+        rate_grid = ttk.Frame(manage_panel, style="Surface.TFrame")
+        rate_grid.grid(row=2, column=0, sticky="ew", pady=(SPACING["section"], 0))
+        for index in range(2):
+            rate_grid.columnconfigure(index, weight=1, uniform="rates")
+        ttk.Label(rate_grid, text="Tax Rate", style="Muted.TLabel").grid(
+            row=0,
+            column=0,
+            sticky="w",
+            padx=(0, SPACING["label"]),
+        )
+        ttk.Entry(rate_grid, textvariable=self.process_tax_var).grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            padx=(0, SPACING["label"]),
+            pady=(SPACING["label"], 0),
+        )
+        ttk.Label(rate_grid, text="Discount Rate", style="Muted.TLabel").grid(
+            row=0,
+            column=1,
+            sticky="w",
+            padx=(SPACING["label"], 0),
+        )
+        ttk.Entry(rate_grid, textvariable=self.process_discount_var).grid(
+            row=1,
+            column=1,
+            sticky="ew",
+            padx=(SPACING["label"], 0),
+            pady=(SPACING["label"], 0),
         )
 
         table_panel = ttk.LabelFrame(
             self.reservations_tab,
             text="Reservations",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
-        table_panel.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(18, 0))
+        table_panel.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="nsew",
+            pady=(SPACING["section"], 0),
+        )
         table_panel.columnconfigure(0, weight=1)
         table_panel.rowconfigure(0, weight=1)
 
@@ -483,8 +603,17 @@ class ReservationDesktopApp:
                 "duration": "Duration",
                 "status": "Status",
             },
+            column_widths={
+                "id": 170,
+                "client": 230,
+                "service": 230,
+                "duration": 100,
+                "status": 125,
+            },
         )
         self.reservations_tree.grid(row=0, column=0, sticky="nsew")
+        self._attach_vertical_scrollbar(table_panel, self.reservations_tree)
+        self._attach_horizontal_scrollbar(table_panel, self.reservations_tree)
         self.reservations_tree.bind("<<TreeviewSelect>>", self._on_reservation_selected)
 
     def _build_logs_tab(self) -> None:
@@ -494,7 +623,7 @@ class ReservationDesktopApp:
         self.logs_tab.rowconfigure(1, weight=1)
 
         controls = ttk.Frame(self.logs_tab, style="App.TFrame")
-        controls.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        controls.grid(row=0, column=0, sticky="ew", pady=(0, SPACING["section"]))
         controls.columnconfigure(1, weight=1)
         ttk.Button(
             controls,
@@ -504,15 +633,15 @@ class ReservationDesktopApp:
         ).grid(row=0, column=0, sticky="w")
         ttk.Label(
             controls,
-            text=f"Source: {self.controller.logger.log_path}",
-            style="Muted.TLabel",
-        ).grid(row=0, column=1, sticky="e")
+            text=f"Log source: {self.controller.logger.log_path}",
+            style="AppMuted.TLabel",
+        ).grid(row=0, column=1, sticky="e", padx=(SPACING["section"], 0))
 
         log_panel = ttk.LabelFrame(
             self.logs_tab,
             text="System Log",
             style="Panel.TLabelframe",
-            padding=16,
+            padding=SPACING["panel"],
         )
         log_panel.grid(row=1, column=0, sticky="nsew")
         log_panel.columnconfigure(0, weight=1)
@@ -524,26 +653,49 @@ class ReservationDesktopApp:
             fg=PALETTE["text"],
             insertbackground=PALETTE["text"],
             relief="flat",
+            highlightthickness=1,
+            highlightbackground=PALETTE["border"],
+            highlightcolor=PALETTE["primary"],
             wrap="none",
-            font=("Menlo", 10),
-            padx=10,
-            pady=10,
+            font=MONOSPACE_FONT,
+            padx=16,
+            pady=14,
+            spacing1=2,
+            spacing3=3,
+            selectbackground=PALETTE["primary"],
+            selectforeground=PALETTE["text"],
         )
         self.logs_text.grid(row=0, column=0, sticky="nsew")
+        self.logs_text.tag_configure("info", foreground=PALETTE["text_muted"])
+        self.logs_text.tag_configure("warning", foreground=PALETTE["warning"])
+        self.logs_text.tag_configure("error", foreground=PALETTE["error"])
         self.logs_text.configure(state="disabled")
-        scrollbar = ttk.Scrollbar(log_panel, command=self.logs_text.yview)
+        scrollbar = ttk.Scrollbar(
+            log_panel,
+            command=self.logs_text.yview,
+            style="Vertical.TScrollbar",
+        )
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.logs_text.configure(yscrollcommand=scrollbar.set)
+        horizontal_scrollbar = ttk.Scrollbar(
+            log_panel,
+            orient="horizontal",
+            command=self.logs_text.xview,
+            style="Horizontal.TScrollbar",
+        )
+        horizontal_scrollbar.grid(row=1, column=0, sticky="ew")
+        self.logs_text.configure(xscrollcommand=horizontal_scrollbar.set)
 
     def _add_labeled_entry(
         self,
-        parent: ttk.LabelFrame,
-        row: int,
+        parent: ttk.Widget,
+        field_index: int,
         label: str,
         variable: tk.StringVar,
     ) -> None:
         """Add a standard label/entry pair to a form."""
 
+        row = field_index * 2
         ttk.Label(parent, text=label, style="Muted.TLabel").grid(
             row=row,
             column=0,
@@ -553,7 +705,7 @@ class ReservationDesktopApp:
             row=row + 1,
             column=0,
             sticky="ew",
-            pady=(6, 12),
+            pady=(SPACING["label"], SPACING["field"]),
         )
 
     def _create_treeview(
@@ -561,14 +713,57 @@ class ReservationDesktopApp:
         parent: ttk.Widget,
         columns: tuple[str, ...],
         headings: dict[str, str],
+        column_widths: dict[str, int] | None = None,
     ) -> ttk.Treeview:
         """Create a configured treeview with shared defaults."""
 
         tree = ttk.Treeview(parent, columns=columns, show="headings")
         for column in columns:
-            tree.heading(column, text=headings[column])
-            tree.column(column, anchor="w", stretch=True, width=150)
+            tree.heading(column, text=headings[column], anchor="w")
+            tree.column(
+                column,
+                anchor="w",
+                stretch=True,
+                width=(column_widths or {}).get(column, 150),
+                minwidth=80,
+            )
+        tree.tag_configure("odd", background=PALETTE["surface"])
+        tree.tag_configure("even", background=PALETTE["row_alt"])
         return tree
+
+    def _attach_vertical_scrollbar(
+        self,
+        parent: ttk.Widget,
+        tree: ttk.Treeview,
+    ) -> ttk.Scrollbar:
+        """Attach a shared vertical scrollbar to a table."""
+
+        scrollbar = ttk.Scrollbar(
+            parent,
+            orient="vertical",
+            command=tree.yview,
+            style="Vertical.TScrollbar",
+        )
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        tree.configure(yscrollcommand=scrollbar.set)
+        return scrollbar
+
+    def _attach_horizontal_scrollbar(
+        self,
+        parent: ttk.Widget,
+        tree: ttk.Treeview,
+    ) -> ttk.Scrollbar:
+        """Attach a shared horizontal scrollbar to a table."""
+
+        scrollbar = ttk.Scrollbar(
+            parent,
+            orient="horizontal",
+            command=tree.xview,
+            style="Horizontal.TScrollbar",
+        )
+        scrollbar.grid(row=1, column=0, sticky="ew")
+        tree.configure(xscrollcommand=scrollbar.set)
+        return scrollbar
 
     def _register_client(self) -> None:
         """Handle the register client action."""
@@ -710,7 +905,15 @@ class ReservationDesktopApp:
 
         self.logs_text.configure(state="normal")
         self.logs_text.delete("1.0", "end")
-        self.logs_text.insert("1.0", content)
+        for line in content.splitlines(keepends=True):
+            line_upper = line.upper()
+            if "ERROR" in line_upper:
+                tag = "error"
+            elif "WARNING" in line_upper or "WARN" in line_upper:
+                tag = "warning"
+            else:
+                tag = "info"
+            self.logs_text.insert("end", line, tag)
         self.logs_text.configure(state="disabled")
 
     def _refresh_all_views(self) -> None:
@@ -734,18 +937,30 @@ class ReservationDesktopApp:
         self.last_status_text.set(self.controller.last_operation_level.title())
         self.latest_event_text.set(self.controller.last_operation_message)
 
-        self._replace_tree_items(
-            self.dashboard_reservations_tree,
-            [
-                (
-                    reservation.id,
-                    reservation.client.name,
-                    reservation.service.name,
-                    reservation.status.title(),
-                )
-                for reservation in self.controller.list_reservations()[-8:]
-            ],
-        )
+        recent_reservations = [
+            (
+                reservation.id,
+                reservation.client.name,
+                reservation.service.name,
+                reservation.status.title(),
+            )
+            for reservation in self.controller.list_reservations()[-8:]
+        ]
+        self._replace_tree_items(self.dashboard_reservations_tree, recent_reservations)
+        if recent_reservations:
+            self.dashboard_empty_label.grid_remove()
+            self.dashboard_reservations_tree.grid()
+            if self.dashboard_reservations_scrollbar is not None:
+                self.dashboard_reservations_scrollbar.grid()
+            if self.dashboard_reservations_x_scrollbar is not None:
+                self.dashboard_reservations_x_scrollbar.grid()
+        else:
+            self.dashboard_reservations_tree.grid_remove()
+            if self.dashboard_reservations_scrollbar is not None:
+                self.dashboard_reservations_scrollbar.grid_remove()
+            if self.dashboard_reservations_x_scrollbar is not None:
+                self.dashboard_reservations_x_scrollbar.grid_remove()
+            self.dashboard_empty_label.grid(row=0, column=0, sticky="nsew")
 
     def _refresh_clients_table(self) -> None:
         """Refresh the client table."""
@@ -825,8 +1040,9 @@ class ReservationDesktopApp:
 
         for item in tree.get_children():
             tree.delete(item)
-        for row in rows:
-            tree.insert("", "end", values=row)
+        for index, row in enumerate(rows):
+            tag = "even" if index % 2 == 0 else "odd"
+            tree.insert("", "end", values=row, tags=(tag,))
 
     def _on_reservation_selected(self, _event: tk.Event[tk.Misc]) -> None:
         """Capture the selected reservation from the treeview."""
